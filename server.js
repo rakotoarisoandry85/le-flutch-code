@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config(); // ← DOIT être en premier, avant tout autre require
 
 const express = require('express');
 const session = require('express-session');
@@ -175,7 +176,7 @@ async function startServer() {
     // Démarrage du Worker BullMQ (hors mode test et hors mode worker dédié)
     if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'worker') {
       const concurrency = Number(process.env.WEBHOOK_WORKER_CONCURRENCY ?? 4);
-      startWebhookWorker({ concurrency });
+      startWebhookWorker(concurrency);
       if (process.env.LOG_LEVEL === 'debug') getQueueEvents();
     }
     logger.info(`\n🏠 Le Flutch démarré sur http://localhost:${config.PORT}`);
@@ -271,7 +272,7 @@ if (process.env.NODE_ENV === 'worker') {
   (async () => {
     try {
       const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '5');
-      const worker = startWebhookWorker({ concurrency });
+      const worker = startWebhookWorker(concurrency);
       global.webhookWorker = worker;
       logger.info(`✅ Webhook worker démarré avec concurrency=${concurrency}`);
     } catch (err) {

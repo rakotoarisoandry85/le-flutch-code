@@ -1,5 +1,9 @@
 'use strict';
 
+// Chargement du .env en tout premier, avant toute lecture de process.env
+// En production les variables sont injectées directement — dotenv est silencieux si .env absent.
+require('dotenv').config();
+
 const crypto = require('crypto');
 
 const sanitize = (val) => (val == null ? '' : String(val)).replace(/\s+/g, '');
