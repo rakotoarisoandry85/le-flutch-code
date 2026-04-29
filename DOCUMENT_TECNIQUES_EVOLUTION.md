@@ -72,7 +72,7 @@ Chaque job a un `jobId` déterministe `pipedrive-{meta.id}`. Si Pipedrive renvoi
 
 ### Migration base de données
 
-**Fichier** : `migrations/2024_001_add_dpe.sql`
+**Fichier** : `migrations/2026_001_add_dpe.sql`
 
 Modifications :
 
@@ -85,7 +85,7 @@ Modifications :
 
 ```bash
 # Appliquer la migration
-psql $DATABASE_URL -f migrations/2024_001_add_dpe.sql
+psql $DATABASE_URL -f migrations/2026_001_add_dpe.sql
 ```
 
 ### Intégration CRM (fieldMapping.js)
@@ -255,12 +255,12 @@ Les tests `tests/dpe.test.js` couvrent :
 ### Défi 1
 - [ ] Redis disponible et accessible (`REDIS_URL`)
 - [ ] `npm install bullmq ioredis`
-- [ ] `server.js` modifié (cf. `server.patch.js`)
-- [ ] Table `webhook_events` créée (SQL dans `server.patch.js`)
+- [ ] `server.js`
+- [ ] Table `webhook_events`
 - [ ] Test : envoyer un webhook mock → vérifier log "[Queue] webhook enqueued"
 
 ### Défi 2
-- [ ] Migration SQL appliquée : `psql $DATABASE_URL -f migrations/2024_001_add_dpe.sql`
+- [ ] Migration SQL appliquée : `psql $DATABASE_URL -f migrations/2026_001_add_dpe.sql`
 - [ ] Hash Pipedrive DPE récupérés et définis en `PIPEDRIVE_DEAL_FIELD_DPE` / `PIPEDRIVE_PERSON_FIELD_DPE`
 - [ ] Sync complète déclenchée : `curl -X POST /api/sync/full`
 - [ ] Vérification : `SELECT dpe_classe, COUNT(*) FROM biens GROUP BY 1;`

@@ -212,7 +212,7 @@ async function initSchema() {
     "ALTER TABLE email_queue ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'email'",
     "ALTER TABLE email_queue ADD COLUMN IF NOT EXISTS brevo_message_id TEXT",
     "ALTER TABLE biens ADD COLUMN IF NOT EXISTS lien_drive TEXT",
-    // Migration DPE — 2024_001_add_dpe
+    // Migration DPE — 2026_001_add_dpe
     "ALTER TABLE biens ADD COLUMN IF NOT EXISTS dpe_classe CHAR(1) CHECK (dpe_classe IN ('A','B','C','D','E','F','G'))",
     "ALTER TABLE acquereur_criteria ADD COLUMN IF NOT EXISTS dpe_classes JSONB DEFAULT '[]'::jsonb",
   ];
