@@ -115,3 +115,17 @@ npm test
 Les tests unitaires couvrent les fonctions pures critiques (formatage,
 sécurité, retry). Les routes Express sont testées en bout-en-bout via le
 harnais Playwright lors des audits manuels.
+
+
+## Modifications: 
+
+Ce que tu gagnes avec cette architecture
+
+Réactivité : les webhooks répondent en 202 Accepted, même si la base est lente ou sous charge.
+
+Résilience : en cas de panne DB / OOM, les jobs sont re‑tentés automatiquement et restent en file jusqu’à ce que tout remonte.
+
+Scalabilité : tu peux ajouter plusieurs workers sains sur d’autres instances, consommer la même queue sans changer l’endpoint.
+
+
+```

@@ -17,6 +17,8 @@ const { syncBiens, syncAcquereurs, integrityCheck, registerWebhooks } = require(
 const { resolveStageIds } = require('./services/pipedriveService');
 const { schedule, shutdownAll } = require('./lib/scheduler');
 const { withSyncLock } = require('./lib/syncLock');
+const { closeQueue, getQueueEvents } = require('./lib/queue');
+const { startWebhookWorker, stopWebhookWorker } = require('./workers/webhookProcessor');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -169,6 +171,13 @@ async function startServer() {
   app.listen(config.PORT, async () => {
     await initSchema();
     logger.info('✅ PostgreSQL schema initialisé');
+
+    // Démarrage du Worker BullMQ (hors mode test et hors mode worker dédié)
+    if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'worker') {
+      const concurrency = Number(process.env.WEBHOOK_WORKER_CONCURRENCY ?? 4);
+      startWebhookWorker({ concurrency });
+      if (process.env.LOG_LEVEL === 'debug') getQueueEvents();
+    }
     logger.info(`\n🏠 Le Flutch démarré sur http://localhost:${config.PORT}`);
     logger.info(`   Base de données : PostgreSQL (Replit managed)`);
     logger.info(`   Biens         : pipeline "${config.BIENS_PIPELINE}" · étape "${config.BIENS_STAGE}"`);
@@ -214,19 +223,41 @@ async function startServer() {
       delayMs: nextIntegrity - now,
     });
   });
+
+  
+  
 }
 
-// FIX Audit Phase 4 — Graceful shutdown
-function gracefulShutdown(signal) {
+// FIX Audit Phase 4 — Graceful shutdown avec worker queue
+async function gracefulShutdown(signal) {
   logger.info(`🛑 Signal ${signal} reçu — arrêt propre`);
+
   shutdownAll();
+
+  // 1. Stopper le worker BullMQ (drain des jobs en cours)
+  try {
+    await stopWebhookWorker();
+  } catch (err) {
+    logger.error('❌ Error stopping webhook worker:', err);
+  }
+
+  // 2. Fermer les connexions BullMQ / Redis
+  try {
+    await closeQueue();
+  } catch (err) {
+    logger.error('❌ Error shutting down queue:', err);
+  }
+
+  // 3. Fermer le pool PostgreSQL
   pool.end().then(() => {
     logger.info('✅ Pool PostgreSQL fermé');
     process.exit(0);
   }).catch(() => process.exit(1));
+
   // Force exit après 10s
   setTimeout(() => process.exit(1), 10_000).unref();
 }
+
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
@@ -234,3 +265,18 @@ startServer().catch((e) => {
   logger.error('❌ Erreur démarrage: ' + e.message);
   process.exit(1);
 });
+
+// Mode worker : démarrer le consumer sans express server
+if (process.env.NODE_ENV === 'worker') {
+  (async () => {
+    try {
+      const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '5');
+      const worker = startWebhookWorker({ concurrency });
+      global.webhookWorker = worker;
+      logger.info(`✅ Webhook worker démarré avec concurrency=${concurrency}`);
+    } catch (err) {
+      logger.error('❌ Error starting webhook worker:', err);
+      process.exit(1);
+    }
+  })();
+}
