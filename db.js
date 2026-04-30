@@ -177,6 +177,17 @@ async function initSchema() {
       message     TEXT,
       created_at  TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS webhook_events (
+      id              SERIAL PRIMARY KEY,
+      event_type      TEXT,
+      deal_id         INTEGER,
+      event_timestamp TEXT,
+      payload         JSONB,
+      job_id          TEXT UNIQUE,
+      received_at     TIMESTAMP DEFAULT NOW(),
+      processed_at    TIMESTAMP
+    );
   `);
 
   await pool.query(`

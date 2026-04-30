@@ -51,6 +51,7 @@ const config = {
   REPLIT_DEV_DOMAIN: process.env.REPLIT_DEV_DOMAIN || '',
   REPL_OWNER: process.env.REPL_OWNER || '',
   REPL_SLUG: process.env.REPL_SLUG || '',
+  PUBLIC_BASE_URL: (process.env.PUBLIC_BASE_URL || process.env.PIPEDRIVE_WEBHOOK_BASE_URL || '').replace(/\/+$/, ''),
 
   SORTEUR_EMAILS: ['mickael@leboutiquier.fr'],
   SORTEUR_STAGE_ID: 300,

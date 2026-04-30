@@ -25,6 +25,11 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
+// CORS : par défaut bloque toute origine externe. CORS_ORIGIN (CSV) pour autoriser des front séparés.
+const corsOrigins = config.CORS_ORIGIN
+  ? config.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+  : [];
+
 // FIX Audit 3.5/3.9 — Activation du CSP en mode strict pour bloquer l'exfiltration XSS
 // NOTE: 'unsafe-inline' (scripts + script-src-attr) requis tant que public/search.html
 // embarque ses scripts en inline et utilise des handlers onclick="...". À retirer
@@ -65,10 +70,6 @@ app.use((req, res, next) => {
   return res.status(403).json({ error: 'Requête cross-origin non autorisée' });
 });
 
-// CORS : par défaut bloque toute origine externe. CORS_ORIGIN (CSV) pour autoriser des front séparés.
-const corsOrigins = config.CORS_ORIGIN
-  ? config.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
-  : [];
 app.use(cors({
   origin(origin, cb) {
     // Autorise les requêtes same-origin (pas de header Origin) et celles whitelistées.
@@ -95,6 +96,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const useSecureCookies = config.IS_PROD || Boolean(config.REPLIT_DEV_DOMAIN);
+
 app.use(session({
   store: new pgSession({ pool, createTableIfMissing: true }),
   name: 'leflutch.sid',
@@ -104,9 +107,8 @@ app.use(session({
   rolling: true,
   cookie: {
     maxAge: config.SESSION_MAX_AGE_MS,
-    // 'strict' en prod ; 'none' en dev pour rester compatible avec l'iframe Replit.
-    sameSite: config.IS_PROD ? 'strict' : 'none',
-    secure: true,
+    sameSite: config.IS_PROD ? 'strict' : (config.REPLIT_DEV_DOMAIN ? 'none' : 'lax'),
+    secure: useSecureCookies,
     httpOnly: true,
     path: '/',
     domain: config.COOKIE_DOMAIN,
@@ -188,9 +190,10 @@ async function startServer() {
     logger.info(`   Intégrité     : quotidienne à ${config.DAILY_INTEGRITY_HOUR}h du matin\n`);
 
     if (config.PIPEDRIVE_API_TOKEN) {
-      const baseUrl = config.REPLIT_DEV_DOMAIN
+      const baseUrl = config.PUBLIC_BASE_URL
+        || (config.REPLIT_DEV_DOMAIN
         ? `https://${config.REPLIT_DEV_DOMAIN}`
-        : (config.REPL_SLUG ? `https://${config.REPL_SLUG}.${config.REPL_OWNER}.repl.co` : null);
+        : (config.REPL_SLUG ? `https://${config.REPL_SLUG}.${config.REPL_OWNER}.repl.co` : null));
       resolveStageIds()
         .then(() => {
           if (baseUrl) {

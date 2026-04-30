@@ -4,7 +4,7 @@ const { Worker } = require('bullmq');
 const Redis = require('ioredis');
 const { logger } = require('../lib/logger');
 const { pool } = require('../db');
-const { getRedisConfig } = require('../lib/queue');
+const { QUEUE_NAMES, getRedisConfig } = require('../lib/queue');
 const { syncWebhookToDb } = require('../pipedrive/webhookSync');
 
 /**
@@ -25,7 +25,7 @@ class WebhookWorker {
   async start(concurrency = 5) {
     logger.info(`🚀 Démarrage webhook worker (concurrency: ${concurrency})`);
 
-    this.worker = new Worker('pipedrive-webhook', this.jobHandler.bind(this), {
+    this.worker = new Worker(QUEUE_NAMES.WEBHOOK, this.jobHandler.bind(this), {
       connection: this.redisConnection,
       concurrency,
       settings: {
@@ -35,7 +35,7 @@ class WebhookWorker {
     });
 
     this.worker.on('completed', (job) => {
-      logger.info(`✅ Job #${job.id} completed (deal #${job.data.dealId})`);
+      logger.info(`✅ Job #${job.id} completed (${job.data.eventType})`);
     });
 
     this.worker.on('failed', (job, err) => {

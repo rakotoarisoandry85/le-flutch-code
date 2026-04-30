@@ -161,6 +161,16 @@ function verifyPipedriveWebhook(body, signature) {
   }
 }
 
+function isValidWebhookToken(token) {
+  const expected = config.WEBHOOK_SECRET;
+  return Boolean(
+    token
+    && typeof token === 'string'
+    && token.length === expected.length
+    && crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+  );
+}
+
 /**
  * POST /api/webhook/pipedrive
  * Reçoit les webhooks Pipedrive et les enqueue pour traitement asynchrone.
@@ -179,7 +189,7 @@ router.post("/pipedrive", async (req, res) => {
   try {
     // 1. Vérifier signature Pipedrive
     const signature = headers['x-pipedrive-signature'];
-    const isValid = verifyPipedriveWebhook(body, signature);
+    const isValid = isValidWebhookToken(req.query.token) || verifyPipedriveWebhook(body, signature);
     
     if (!isValid) {
       logger.warn('⚠️ Webhook: signature invalide rejetée');
@@ -187,11 +197,14 @@ router.post("/pipedrive", async (req, res) => {
     }
 
     // Extraire infos du webhook
-    const eventType = headers['x-pipedrive-event']; // ex: "deal.updated"
+    const headerEventType = headers['x-pipedrive-event']; // ex: "deal.updated"
     const meta = headers['x-pipedrive-meta']; // ex: "{request_id: 123}"
     const { current, previous } = body;
     const dealId = current?.id || previous?.id;
     const timestamp = current?.update_time || Date.now();
+    const metaAction = body?.meta?.action;
+    const metaObject = body?.meta?.object;
+    const eventType = headerEventType || (metaAction && metaObject ? `${metaAction}.${metaObject}` : null);
 
     if (!dealId || !eventType) {
       logger.warn('⚠️ Webhook: dealId ou eventType manquant');
